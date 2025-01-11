@@ -6,6 +6,7 @@ import android.content.Intent
 import android.health.connect.datatypes.ExerciseSessionType
 import android.net.Uri
 import android.os.Bundle
+import android.os.Parcelable
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -99,6 +100,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val receivedShareFile = intent?.let {
+            it.data ?: it.getParcelableExtra(Intent.EXTRA_STREAM, Parcelable::class.java) as? Uri
+        }
+
         setContent {
             val scope = rememberCoroutineScope()
             val snackbarHostState = remember { SnackbarHostState() }
@@ -112,7 +117,9 @@ class MainActivity : ComponentActivity() {
                         val grantLauncher =
                             rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { granted ->
                                 if (granted.containsAll(REQUIRED_PERMISSIONS)) {
-                                    state = ApplicationState.AllPermissions
+                                    state =
+                                        receivedShareFile?.let(ApplicationState::FitFileSelected)
+                                            ?: ApplicationState.AllPermissions
                                 }
                             }
 
@@ -132,7 +139,8 @@ class MainActivity : ComponentActivity() {
 
                             val granted = client.permissionController.getGrantedPermissions()
                             if (granted.containsAll(REQUIRED_PERMISSIONS)) {
-                                state = ApplicationState.AllPermissions
+                                state = receivedShareFile?.let(ApplicationState::FitFileSelected)
+                                    ?: ApplicationState.AllPermissions
                                 return@LaunchedEffect
                             }
                             state = ApplicationState.RequiresPermission
@@ -388,7 +396,8 @@ fun LoadingFitFileScreen(
                     return@LaunchedEffect
                 }
 
-                val session = fit.sessionMesgs.firstOrNull()
+                // We only support a single sport
+                val session = fit.sessionMesgs.singleOrNull()
                 if (session == null) {
                     onComplete(null)
                     return@LaunchedEffect
