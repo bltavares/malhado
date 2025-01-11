@@ -1,10 +1,12 @@
-
-<center>
-<h1>Malhado</h1>
-<img src="./app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" alt="Malhado Logo" width="100" height="100" >
-
-Import '.fit' files into Android Health Connect.
-</center>
+<header>
+  <h1 align="center">Malhado</h1>
+  <p align="center">
+    <img src="./app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" alt="Malhado Logo" width="100" height="100" >
+  </p>
+  <p align="center">
+  Import '.fit' files into Android Health Connect.
+  </p>
+</header>
 
 ## Description
 
