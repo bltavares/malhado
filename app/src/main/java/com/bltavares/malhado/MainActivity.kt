@@ -29,6 +29,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
@@ -58,6 +59,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.HealthConnectClient
@@ -273,9 +275,13 @@ private fun PermissionRequiredScreen(onClick: () -> Unit) {
         Spacer(modifier = Modifier.height(10.dp))
         FilledTonalButton(
             onClick = onClick,
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            modifier = Modifier.padding(ButtonDefaults.TextButtonWithIconContentPadding),
         ) {
-            Icon(Icons.Filled.AddCircle, "", modifier = Modifier.size(ButtonDefaults.IconSize))
+            Icon(
+                painterResource(R.drawable.ic_health_connect_logo),
+                "Health Connect logo",
+                modifier = Modifier.size(ButtonDefaults.IconSize)
+            )
             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
             Text("Connect to Health Connect")
         }
@@ -353,7 +359,11 @@ fun ConnectedScreen(onClick: () -> Unit) {
             onClick = onClick,
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
         ) {
-            Icon(Icons.Filled.Edit, "", modifier = Modifier.size(ButtonDefaults.IconSize))
+            Icon(
+                imageVector = Icons.Filled.AddCircle,
+                contentDescription = "Add icon",
+                modifier = Modifier.size(ButtonDefaults.IconSize)
+            )
             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
             Text("Load .fit file")
         }
@@ -722,7 +732,14 @@ fun FitFilePreviewScreen(
                         processing = false
                     }
                 },
+                modifier = Modifier.padding(ButtonDefaults.TextButtonWithIconContentPadding),
             ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_health_connect_logo),
+                    contentDescription = "Health Connect Logo",
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
                 Text("Send to Health Connect")
             }
         }
