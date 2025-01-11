@@ -29,9 +29,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedButton
@@ -82,6 +80,9 @@ import androidx.health.connect.client.units.Energy
 import androidx.health.connect.client.units.Length
 import androidx.health.connect.client.units.Power
 import androidx.health.connect.client.units.Velocity
+import androidx.health.connect.client.units.kilocalories
+import androidx.health.connect.client.units.meters
+import androidx.health.connect.client.units.watts
 import com.bltavares.malhado.MainActivity.Companion.METADATA
 import com.bltavares.malhado.ui.theme.MalhadoTheme
 import com.garmin.fit.FitDecoder
@@ -204,6 +205,7 @@ class MainActivity : ComponentActivity() {
                                                 it.fitMessage.heartRate,
                                                 it.fitMessage.speed,
                                                 it.fitMessage.power,
+                                                it.fitMessage.cadence,
                                             )
                                         )
                                         state = ApplicationState.AllPermissions
@@ -456,7 +458,7 @@ fun LoadingFitFileScreen(
                     point.power?.let {
                         power.add(
                             PowerRecord.Sample(
-                                time = pointTime, power = Power.watts(it.toDouble()),
+                                time = pointTime, power = it.watts,
                             )
                         )
                     }
@@ -497,7 +499,7 @@ fun LoadingFitFileScreen(
                         endTime = endTime,
                         endZoneOffset = null,
                         metadata = METADATA,
-                        energy = Energy.calories(session.totalCalories.toDouble()),
+                        energy = session.totalCalories.kilocalories,
                     ),
                     distance = DistanceRecord(
                         startTime = startTime,
@@ -505,7 +507,7 @@ fun LoadingFitFileScreen(
                         endTime = endTime,
                         endZoneOffset = null,
                         metadata = METADATA,
-                        distance = Length.meters(session.totalDistance.toDouble()),
+                        distance = session.totalDistance.meters,
                     ),
                     heartRate = if (heartrate.isNotEmpty()) {
                         HeartRateRecord(
@@ -543,6 +545,18 @@ fun LoadingFitFileScreen(
                     } else {
                         null
                     },
+                    cadence = if (cadence.isNotEmpty()) {
+                        CyclingPedalingCadenceRecord(
+                            startTime = startTime,
+                            startZoneOffset = null,
+                            endTime = endTime,
+                            endZoneOffset = null,
+                            metadata = METADATA,
+                            samples = cadence
+                        )
+                    } else {
+                        null
+                    },
                 )
 
                 onComplete(result)
@@ -558,6 +572,7 @@ data class ParsedResponse(
     val heartRate: HeartRateRecord?,
     val power: PowerRecord?,
     val speed: SpeedRecord?,
+    val cadence: CyclingPedalingCadenceRecord?,
 )
 
 @Preview(showSystemUi = true, showBackground = true)
@@ -649,7 +664,7 @@ fun FitFilePreviewScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Top)
                     ) {
                         Text("Calories", style = MaterialTheme.typography.titleSmall)
-                        Text("Calories: ${it.energy.inCalories} calories")
+                        Text("Calories: ${it.energy.inKilocalories} Cal")
                     }
                 }
             }
@@ -668,7 +683,7 @@ fun FitFilePreviewScreen(
                         }
                         Text("Heart Rate", style = MaterialTheme.typography.titleSmall)
                         Text("Recorded datapoints: ${it.samples.size} datapoints")
-                        Text("Average speed: $average")
+                        Text("Average heart rate: $average")
                     }
                 }
             }
@@ -707,6 +722,25 @@ fun FitFilePreviewScreen(
                         Text("Power", style = MaterialTheme.typography.titleSmall)
                         Text("Recorded datapoints: ${it.samples.size} datapoints")
                         Text("Average power: $average")
+                    }
+                }
+            }
+
+            fitMessage.cadence?.let {
+                ElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Top)
+                    ) {
+                        val average by produceState("--") {
+                            val avg = it.samples.map { it.revolutionsPerMinute }.average()
+                            value = "%.2f rpm".format(avg)
+                        }
+                        Text("Cadence", style = MaterialTheme.typography.titleSmall)
+                        Text("Recorded datapoints: ${it.samples.size} datapoints")
+                        Text("Average cadence: $average")
                     }
                 }
             }
@@ -752,68 +786,86 @@ private fun FitFilePreviewScreenPreview() {
     val startTime = Instant.parse("2020-01-01T01:01:01Z")
     val endTime = Instant.parse("2020-01-01T02:02:02Z")
 
-    FitFilePreviewScreen(onSend = {}, onBack = {}, fitMessage = ParsedResponse(
-        session = ExerciseSessionRecord(
-            startTime = startTime,
-            startZoneOffset = null,
-            endTime = endTime,
-            endZoneOffset = null,
-            metadata = METADATA,
-            exerciseType = ExerciseSessionType.EXERCISE_SESSION_TYPE_BIKING,
-            exerciseRoute = ExerciseRoute(
-                route = listOf(
-                    Location(startTime, 1.0, 1.0),
-                    Location(startTime.plusSeconds(1), 1.1, 1.1),
+    FitFilePreviewScreen(
+        onSend = {}, onBack = {},
+        fitMessage = ParsedResponse(
+            session = ExerciseSessionRecord(
+                startTime = startTime,
+                startZoneOffset = null,
+                endTime = endTime,
+                endZoneOffset = null,
+                metadata = METADATA,
+                exerciseType = ExerciseSessionType.EXERCISE_SESSION_TYPE_BIKING,
+                exerciseRoute = ExerciseRoute(
+                    route = listOf(
+                        Location(startTime, 1.0, 1.0),
+                        Location(startTime.plusSeconds(1), 1.1, 1.1),
+                    )
                 )
-            )
-        ), calories = TotalCaloriesBurnedRecord(
-            startTime = startTime,
-            startZoneOffset = null,
-            endTime = endTime,
-            endZoneOffset = null,
-            metadata = METADATA,
-            energy = Energy.calories(100.0),
-        ), distance = DistanceRecord(
-            startTime = startTime,
-            startZoneOffset = null,
-            endTime = endTime,
-            endZoneOffset = null,
-            metadata = METADATA,
-            distance = Length.meters(100.0),
-        ), heartRate = HeartRateRecord(
-            startTime = startTime,
-            startZoneOffset = null,
-            endTime = endTime,
-            endZoneOffset = null,
-            metadata = METADATA,
-            samples = listOf(
-                HeartRateRecord.Sample(startTime, 68),
-                HeartRateRecord.Sample(startTime.plusSeconds(1), 140),
-            )
-        ), power = PowerRecord(
-            startTime = startTime,
-            startZoneOffset = null,
-            endTime = endTime,
-            endZoneOffset = null,
-            metadata = METADATA,
-            samples = listOf(
-                PowerRecord.Sample(startTime, Power.watts(100.0)),
-                PowerRecord.Sample(startTime.plusSeconds(1), Power.watts(500.0))
-            )
-        ), speed = SpeedRecord(
-            startTime = startTime,
-            startZoneOffset = null,
-            endTime = endTime,
-            endZoneOffset = null,
-            metadata = METADATA,
-            samples = listOf(
-                SpeedRecord.Sample(startTime, Velocity.metersPerSecond(1.9)),
-                SpeedRecord.Sample(
-                    startTime.plusSeconds(1), Velocity.metersPerSecond(5.9)
-                ),
-            )
-        )
-    )
+            ),
+            calories = TotalCaloriesBurnedRecord(
+                startTime = startTime,
+                startZoneOffset = null,
+                endTime = endTime,
+                endZoneOffset = null,
+                metadata = METADATA,
+                energy = Energy.calories(100.0),
+            ),
+            distance = DistanceRecord(
+                startTime = startTime,
+                startZoneOffset = null,
+                endTime = endTime,
+                endZoneOffset = null,
+                metadata = METADATA,
+                distance = Length.meters(100.0),
+            ),
+            heartRate = HeartRateRecord(
+                startTime = startTime,
+                startZoneOffset = null,
+                endTime = endTime,
+                endZoneOffset = null,
+                metadata = METADATA,
+                samples = listOf(
+                    HeartRateRecord.Sample(startTime, 68),
+                    HeartRateRecord.Sample(startTime.plusSeconds(1), 140),
+                )
+            ),
+            power = PowerRecord(
+                startTime = startTime,
+                startZoneOffset = null,
+                endTime = endTime,
+                endZoneOffset = null,
+                metadata = METADATA,
+                samples = listOf(
+                    PowerRecord.Sample(startTime, Power.watts(100.0)),
+                    PowerRecord.Sample(startTime.plusSeconds(1), Power.watts(500.0))
+                )
+            ),
+            speed = SpeedRecord(
+                startTime = startTime,
+                startZoneOffset = null,
+                endTime = endTime,
+                endZoneOffset = null,
+                metadata = METADATA,
+                samples = listOf(
+                    SpeedRecord.Sample(startTime, Velocity.metersPerSecond(1.9)),
+                    SpeedRecord.Sample(
+                        startTime.plusSeconds(1), Velocity.metersPerSecond(5.9)
+                    ),
+                )
+            ),
+            cadence = CyclingPedalingCadenceRecord(
+                startTime = startTime,
+                startZoneOffset = null,
+                endTime = endTime,
+                endZoneOffset = null,
+                metadata = METADATA,
+                samples = listOf(
+                    CyclingPedalingCadenceRecord.Sample(startTime, 80.0),
+                    CyclingPedalingCadenceRecord.Sample(startTime.plusSeconds(1), 89.0),
+                )
+            ),
+        ),
     )
 }
 
