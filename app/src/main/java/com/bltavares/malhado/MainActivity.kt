@@ -88,6 +88,7 @@ import com.bltavares.malhado.ui.theme.MalhadoTheme
 import com.garmin.fit.FitDecoder
 import com.garmin.fit.Sport
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.Instant
 
 sealed class ApplicationState {
@@ -628,6 +629,7 @@ fun FitFilePreviewScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Top)
                     ) {
                         Text("Exercise session", style = MaterialTheme.typography.titleSmall)
+                        Text("Duration: ${Duration.between(it.startTime, it.endTime).toMinutes()} minutes")
                         Text("Start time: ${it.startTime}")
                         Text("End time: ${it.endTime}")
                         Text(
