@@ -415,8 +415,15 @@ fun LoadingFitFileScreen(
                     return@LaunchedEffect
                 }
 
+                val startTime = session.startTime.date.toInstant()
+                val endTime = session.timestamp.date.toInstant()
+
                 val datapoints = fit.recordMesgs.map { it.timestamp.date.toInstant() to it }
-                    .sortedBy { it.first }.distinctBy { it.first }
+                    .sortedBy { it.first }.distinctBy { it.first }.filter { (pointTime, _) ->
+                        // Health Connect don't allow inclusive datapoints,
+                        // so it must be after start and before (not including) the end
+                        pointTime.isAfter(startTime) && pointTime.isBefore(endTime)
+                    }
                 val route = ArrayList<Location>(datapoints.size)
                 val cadence = ArrayList<CyclingPedalingCadenceRecord.Sample>(datapoints.size)
                 val heartrate = ArrayList<HeartRateRecord.Sample>(datapoints.size)
@@ -473,8 +480,6 @@ fun LoadingFitFileScreen(
                     }
                 }
 
-                val startTime = session.startTime.date.toInstant()
-                val endTime = session.timestamp.date.toInstant()
 
                 val result = ParsedResponse(
                     session = ExerciseSessionRecord(
